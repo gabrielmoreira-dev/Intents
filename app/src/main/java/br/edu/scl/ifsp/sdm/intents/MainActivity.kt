@@ -3,13 +3,18 @@ package br.edu.scl.ifsp.sdm.intents
 import android.Manifest.permission.CALL_PHONE
 import android.content.Intent
 import android.content.Intent.ACTION_CALL
+import android.content.Intent.ACTION_CHOOSER
 import android.content.Intent.ACTION_DIAL
+import android.content.Intent.ACTION_PICK
 import android.content.Intent.ACTION_VIEW
+import android.content.Intent.EXTRA_INTENT
+import android.content.Intent.EXTRA_TITLE
 import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.net.Uri
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Environment
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
@@ -25,6 +30,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var parameterArl: ActivityResultLauncher<Intent>
     private lateinit var callPhonePermissionArl: ActivityResultLauncher<String>
+    private lateinit var pickImageArl: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,6 +51,17 @@ class MainActivity : AppCompatActivity() {
                 callPhone(true)
             } else {
                 Toast.makeText(this, getString(R.string.permission_required), Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        pickImageArl = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            with (it) {
+                if (resultCode == RESULT_OK) {
+                    data?.data?.also {
+                        activityMainBinding.parameterTv.text = it.toString()
+                        startActivity(Intent(ACTION_VIEW).apply { data = it })
+                    }
+                }
             }
         }
 
@@ -73,10 +90,7 @@ class MainActivity : AppCompatActivity() {
                 true
             }
             R.id.viewMi -> {
-                val url = Uri.parse(activityMainBinding.parameterTv.text.toString())
-                Intent(ACTION_VIEW, url).apply {
-                    startActivity(this)
-                }
+                startActivity(browserIntent())
                 true
             }
 
@@ -99,10 +113,18 @@ class MainActivity : AppCompatActivity() {
             }
 
             R.id.pickMi -> {
+                val imageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).path
+                pickImageArl.launch(Intent(ACTION_PICK).apply { setDataAndType(Uri.parse(imageDir), "image/*") })
                 true
             }
 
             R.id.chooserMi -> {
+                startActivity(
+                    Intent(ACTION_CHOOSER).apply {
+                        putExtra(EXTRA_TITLE, getString(R.string.choose_your_favorite_browser))
+                        putExtra(EXTRA_INTENT, browserIntent())
+                    }
+                )
                 true
             }
 
@@ -118,5 +140,10 @@ class MainActivity : AppCompatActivity() {
                 data = Uri.parse(it)
             }
         })
+    }
+
+    private fun browserIntent(): Intent {
+        val url = Uri.parse(activityMainBinding.parameterTv.text.toString())
+        return Intent(ACTION_VIEW, url)
     }
 }
